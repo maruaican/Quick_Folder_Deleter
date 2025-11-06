@@ -1,6 +1,8 @@
 # coding: utf-8
 from flask import Flask, render_template_string, request, Response, stream_with_context
 import os, shutil, stat, datetime, logging, time
+import webbrowser
+from threading import Timer
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -22,7 +24,7 @@ HTML_TEMPLATE = """
   form{margin-top:1rem;display:flex;flex-direction:column;gap:.6rem}
   input[type="text"]{width:100%;box-sizing:border-box}
   #submit-btn{align-self:start}
-  #log-output{flex:1 1 auto;background:#000;color:#eee;padding:1rem;white-space:pre-wrap;word-wrap:break-word;font-family:Courier,monospace;overflow:auto;border-radius:6px;min-height:300px}
+  #log-output{flex:1 1 auto;background:#000;color:#eee;padding:1rem;white-space:pre-wrap;word-wrap:break-word;font-family:Courier,monospace;overflow:auto;border-radius:6px;min-height:300px;resize:vertical;border:none}
   .progress-wrap{margin-top:0.8rem;display:flex;align-items:center;gap:.6rem}
   progress{width:100%;height:1rem}
   @media(max-width:900px){.grid{grid-template-columns:1fr};article{min-height:360px}}
@@ -56,7 +58,7 @@ HTML_TEMPLATE = """
 
     <article id="log-container">
       <h2 style="margin:0 0 0.6rem 0">実行ログ</h2>
-      <pre id="log-output"></pre>
+      <textarea id="log-output" readonly></textarea>
     </article>
   </div>
 </main>
@@ -71,14 +73,14 @@ HTML_TEMPLATE = """
   const progressText = document.getElementById('progress-text');
 
   function appendLog(line){
-    logOutput.textContent += line + "\\n";
+    logOutput.value += line + "\\n";
     logOutput.scrollTop = logOutput.scrollHeight;
   }
 
   function resetUI(){
     progressBar.value = 0;
     progressText.textContent = '0%';
-    logOutput.textContent = '';
+    logOutput.value = '';
   }
 
   form.addEventListener('submit', function(e){
@@ -249,7 +251,11 @@ def stream():
     # Return generator wrapped in stream_with_context for SSE streaming
     return Response(stream_with_context(delete_generator(folder_path)), mimetype='text/event-stream')
 
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:5001")
+
 if __name__ == '__main__':
     # For local testing only. In production use a proper WSGI server.
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        Timer(1, open_browser).start()
     app.run(debug=True, host='0.0.0.0', port=5001)
-
